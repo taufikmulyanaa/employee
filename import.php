@@ -1,3 +1,20 @@
+<?php
+/**
+ * Fixed Import Page
+ * File: import.php
+ */
+
+$success = '';
+$error = '';
+
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file'])) {
+    // Include the import handler
+    require_once 'import_handler.php';
+    // The handler will redirect to results page
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -76,6 +93,29 @@
         </header>
 
         <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            
+            <?php if ($success): ?>
+                <div class="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg mb-6">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                        <?= htmlspecialchars($success) ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+            
+            <?php if ($error): ?>
+                <div class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg mb-6">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd"/>
+                        </svg>
+                        <?= htmlspecialchars($error) ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <!-- Upload Form -->
                 <div class="bg-card shadow-sm rounded-xl border border-border">
@@ -83,7 +123,8 @@
                         <h2 class="text-lg font-medium text-foreground">Upload Excel/CSV File</h2>
                     </div>
                     
-                    <form method="POST" enctype="multipart/form-data" class="p-6">
+                    <!-- FIXED: Added proper action to form -->
+                    <form method="POST" enctype="multipart/form-data" action="import.php" class="p-6">
                         <div class="space-y-6">
                             <div>
                                 <label for="excel_file" class="block text-sm font-medium text-foreground mb-2">
@@ -107,6 +148,19 @@
                                 <div id="file-info" class="mt-2 text-sm text-muted-foreground hidden"></div>
                             </div>
 
+                            <!-- Progress Bar (Hidden by default) -->
+                            <div id="upload-progress" class="hidden">
+                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <div class="flex items-center">
+                                        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <span class="text-sm font-medium text-blue-700">Processing import... Please wait.</span>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                                 <div class="flex">
                                     <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
@@ -115,13 +169,13 @@
                                     <div class="ml-3">
                                         <h3 class="text-sm font-medium text-blue-800">Expected File Format</h3>
                                         <div class="mt-2 text-sm text-blue-700">
-                                            <p>Required columns (in order):</p>
+                                            <p>Required columns (in exact order):</p>
                                             <ol class="list-decimal list-inside mt-1">
-                                                <li>Name</li>
-                                                <li>Division</li>
-                                                <li>Headcount Status</li>
-                                                <li>Replacing (optional)</li>
-                                                <li>Assignment Date (format: YYYY-MM-DD)</li>
+                                                <li><strong>Name</strong> - Employee full name</li>
+                                                <li><strong>Division</strong> - Department/Division</li>
+                                                <li><strong>Headcount Status</strong> - Must be one of: "Replacement", "New Headcount", "New Request"</li>
+                                                <li><strong>Replacing</strong> - Name of person being replaced (optional, but required if status is "Replacement")</li>
+                                                <li><strong>Assignment Date</strong> - Format: YYYY-MM-DD (e.g., 2024-01-15)</li>
                                             </ol>
                                         </div>
                                     </div>
@@ -132,8 +186,13 @@
                                 <a href="index.php" class="px-4 py-2 text-sm font-medium text-foreground bg-background border border-border rounded-lg hover:bg-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors">
                                     Cancel
                                 </a>
-                                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors">
-                                    Import Data
+                                <button type="submit" id="import-btn" class="px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors">
+                                    <span class="flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
+                                        </svg>
+                                        Import Data
+                                    </span>
                                 </button>
                             </div>
                         </div>
@@ -155,23 +214,25 @@
                         </div>
 
                         <div class="space-y-2">
-                            <h3 class="font-medium text-foreground">2. Data Structure</h3>
+                            <h3 class="font-medium text-foreground">2. Required Columns</h3>
                             <p class="text-sm text-muted-foreground">
-                                Make sure the first row contains column headers, and data starts from the second row.
+                                Your file must have exactly 5 columns in this order: Name, Division, Headcount Status, Replacing, Assignment Date.
                             </p>
                         </div>
 
                         <div class="space-y-2">
-                            <h3 class="font-medium text-foreground">3. Headcount Status</h3>
-                            <p class="text-sm text-muted-foreground">
-                                Valid values: "Replacement", "New Headcount", "New Request"
-                            </p>
+                            <h3 class="font-medium text-foreground">3. Data Validation</h3>
+                            <ul class="text-sm text-muted-foreground list-disc list-inside">
+                                <li><strong>Headcount Status</strong> must be exactly: "Replacement", "New Headcount", or "New Request"</li>
+                                <li><strong>Assignment Date</strong> format: YYYY-MM-DD (e.g., 2024-01-15)</li>
+                                <li><strong>Replacing</strong> field is required when status is "Replacement"</li>
+                            </ul>
                         </div>
 
                         <div class="space-y-2">
-                            <h3 class="font-medium text-foreground">4. Duplicate Data</h3>
+                            <h3 class="font-medium text-foreground">4. Duplicate Handling</h3>
                             <p class="text-sm text-muted-foreground">
-                                If an employee name already exists, the data will be updated with the latest information.
+                                If an employee name already exists, the import will create a new record. Names are not unique.
                             </p>
                         </div>
 
@@ -182,8 +243,8 @@
                                 </svg>
                                 <div class="ml-3">
                                     <p class="text-sm text-yellow-800">
-                                        <strong>Warning:</strong> Make sure your data is correct before importing. 
-                                        Backup old data if necessary.
+                                        <strong>Important:</strong> Make sure your data is correct before importing. 
+                                        Review the template format below.
                                     </p>
                                 </div>
                             </div>
@@ -197,7 +258,7 @@
                 <div class="px-6 py-4 border-b border-border">
                     <div class="flex items-center justify-between">
                         <h2 class="text-lg font-medium text-foreground">CSV Template</h2>
-                        <a href="download_template_en.php" class="px-4 py-2 text-sm font-medium text-primary bg-primary/10 border border-primary/20 rounded-lg hover:bg-primary/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors">
+                        <a href="download_template.php" class="px-4 py-2 text-sm font-medium text-primary bg-primary/10 border border-primary/20 rounded-lg hover:bg-primary/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors">
                             Download Template
                         </a>
                     </div>
@@ -205,14 +266,27 @@
                 
                 <div class="p-6">
                     <p class="text-sm text-muted-foreground mb-4">
-                        Example CSV file format that can be used:
+                        Example CSV file format (copy this exactly):
                     </p>
                     
-                    <div class="bg-muted/50 rounded-lg p-4 text-sm font-mono">
-                        Name,Division,Headcount Status,Replacing,Assignment Date<br>
-                        John Doe,IT,New Headcount,,2024-01-15<br>
-                        Jane Smith,Finance,Replacement,Mike Johnson,2024-01-20<br>
-                        Ahmad Satria,HR,New Request,,2024-02-01
+                    <div class="bg-muted/50 rounded-lg p-4 text-sm font-mono overflow-x-auto">
+                        <div class="whitespace-pre-line">
+Name,Division,Headcount Status,Replacing,Assignment Date
+John Doe,IT,New Headcount,,2024-01-15
+Jane Smith,Finance,Replacement,Mike Johnson,2024-01-20
+Ahmad Satria,HR,New Request,,2024-02-01
+Sarah Wilson,Marketing,New Headcount,,2024-02-05
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 text-xs text-muted-foreground">
+                        <p><strong>Notes:</strong></p>
+                        <ul class="list-disc list-inside mt-1 space-y-1">
+                            <li>First row must contain column headers exactly as shown</li>
+                            <li>Empty cells in "Replacing" column should be left blank</li>
+                            <li>Date format must be YYYY-MM-DD</li>
+                            <li>No extra spaces around commas</li>
+                        </ul>
                     </div>
                 </div>
             </div>
@@ -220,24 +294,89 @@
     </div>
 
     <script>
-        // Handle file selection
+        // Handle file selection and show progress
         document.getElementById('excel_file').addEventListener('change', function() {
             const fileInfo = document.getElementById('file-info');
             const file = this.files[0];
             
             if (file) {
+                // Validate file type
+                const validTypes = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+                const fileType = file.type;
+                const fileName = file.name.toLowerCase();
+                
+                const isValidType = validTypes.includes(fileType) || 
+                                  fileName.endsWith('.csv') || 
+                                  fileName.endsWith('.xls') || 
+                                  fileName.endsWith('.xlsx');
+                
+                if (!isValidType) {
+                    fileInfo.innerHTML = `
+                        <div class="flex items-center text-red-600">
+                            <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd"/>
+                            </svg>
+                            <strong>Invalid file type!</strong> Please select CSV, XLS, or XLSX file.
+                        </div>
+                    `;
+                    fileInfo.classList.remove('hidden');
+                    document.getElementById('import-btn').disabled = true;
+                    return;
+                }
+                
+                // Validate file size (10MB limit)
+                if (file.size > 10 * 1024 * 1024) {
+                    fileInfo.innerHTML = `
+                        <div class="flex items-center text-red-600">
+                            <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd"/>
+                            </svg>
+                            <strong>File too large!</strong> Maximum size is 10MB.
+                        </div>
+                    `;
+                    fileInfo.classList.remove('hidden');
+                    document.getElementById('import-btn').disabled = true;
+                    return;
+                }
+                
+                // Valid file
                 fileInfo.innerHTML = `
-                    <div class="flex items-center">
-                        <svg class="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <div class="flex items-center text-green-600">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                         </svg>
                         File selected: <strong>${file.name}</strong> (${(file.size/1024/1024).toFixed(2)} MB)
                     </div>
                 `;
                 fileInfo.classList.remove('hidden');
+                document.getElementById('import-btn').disabled = false;
             } else {
                 fileInfo.classList.add('hidden');
+                document.getElementById('import-btn').disabled = false;
             }
+        });
+        
+        // Show progress on form submit
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const fileInput = document.getElementById('excel_file');
+            if (!fileInput.files[0]) {
+                e.preventDefault();
+                alert('Please select a file to import.');
+                return;
+            }
+            
+            // Show progress
+            document.getElementById('upload-progress').classList.remove('hidden');
+            document.getElementById('import-btn').disabled = true;
+            document.getElementById('import-btn').innerHTML = `
+                <span class="flex items-center gap-2">
+                    <svg class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Processing...
+                </span>
+            `;
         });
     </script>
 </body>
